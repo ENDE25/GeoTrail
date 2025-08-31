@@ -13,6 +13,12 @@
       background: rgba(255,255,255,0.9); padding:8px; border-radius:6px;
       font-family:Arial, Helvetica, sans-serif; font-size:14px;
     }
+    #route-tooltip {
+      position:absolute; z-index:1000; pointer-events:none;
+      background:rgba(0,0,0,0.8); color:#fff; padding:4px 8px;
+      border-radius:4px; font-size:12px; font-family:Arial,sans-serif;
+      display:none; white-space:nowrap;
+    }
   </style>
 </head>
 <body>
@@ -21,6 +27,7 @@
     <strong>Senderos FEDME</strong><br>
     Clic en una ruta para ver propiedades y enlaces.
   </div>
+  <div id="route-tooltip"></div>
 
   <script src="https://unpkg.com/maplibre-gl@2.4.0/dist/maplibre-gl.js"></script>
   <script>
@@ -72,6 +79,18 @@
           'line-width': 3
         }
       });
+      // Capa para resaltar la ruta seleccionada
+      map.addLayer({
+        id: 'fedme-rutas-selected',
+        type: 'line',
+        source: 'fedme',
+        'source-layer': 'senderos-fedme',
+        paint: {
+          'line-color': '#c0392b',
+          'line-width': 6
+        },
+        filter: ['==', 'id', ''] // Inicialmente vacío, no muestra nada
+      });
       map.getCanvas().style.cursor = 'default';
     });
 
@@ -110,6 +129,9 @@
     // Popup global
     const popup = new maplibregl.Popup({closeButton:true,closeOnClick:true});
 
+    // Variable para trackear la ruta seleccionada
+    let selectedRouteId = null;
+
     // Popup global fijo en la esquina inferior derecha
     const popupDiv = document.createElement('div');
     popupDiv.id = 'route-popup';
@@ -130,10 +152,30 @@
 
     // Escucha clicks en el mapa y muestra propiedades de la primera feature visible
     map.on('click', (e) => {
-      const features = map.queryRenderedFeatures(e.point, { layers: ['fedme-rutas'] });
-      if (!features || features.length === 0) return;
-      const feat = features[0];
+      // Buscar features en todas las capas
+      const allFeatures = map.queryRenderedFeatures(e.point);
+      const routeFeatures = allFeatures.filter(f => {
+        const props = f.properties || {};
+        return props.nombre || props.name || props.id;
+      });
+      
+      if (!routeFeatures || routeFeatures.length === 0) {
+        // Click fuera de una ruta - quitar selección
+        selectedRouteId = null;
+        map.setFilter('fedme-rutas-selected', ['==', 'id', '']);
+        popupDiv.style.display = 'none';
+        return;
+      }
+      
+      const feat = routeFeatures[0];
       const props = feat.properties || {};
+      
+      // Resaltar la ruta seleccionada
+      selectedRouteId = props.id;
+      if (selectedRouteId) {
+        map.setFilter('fedme-rutas-selected', ['==', 'id', selectedRouteId]);
+      }
+      
       let html = `<div style='font-size:15px'><b>Datos de la ruta</b></div><hr style='margin:6px 0'>`;
       for (const k of ['nombre','name','id','tipo','clasificacion','longitud']) {
         if (props[k]) {
@@ -161,30 +203,35 @@
       popupDiv.style.display = 'block';
     });
 
-    // Ocultar popup al hacer click fuera del mapa
-    map.on('click', (e) => {
-      const features = map.queryRenderedFeatures(e.point, { layers: ['fedme-rutas'] });
-      if (!features || features.length === 0) {
-        popupDiv.style.display = 'none';
-      }
-    });
-
-    // Escucha clicks en el mapa y muestra propiedades de la primera feature visible
-    map.on('click', (e) => {
-      const features = map.queryRenderedFeatures(e.point);
-      if (!features || features.length === 0) return;
-      // tomamos la primera feature relevante (puedes mejorar la lógica filtrando por layer id)
-      const feat = features[0];
-      const props = feat.properties || {};
-      const coord = e.lngLat;
-
-      popup.setLngLat(coord).setHTML(featurePopupHtml(props)).addTo(map);
-    });
-
     // Cambia cursor cuando hay features al pasar por encima
     map.on('mousemove', (e) => {
+      // Buscar features en todas las capas, luego filtrar por tipo
       const features = map.queryRenderedFeatures(e.point);
-      map.getCanvas().style.cursor = (features && features.length) ? 'pointer' : '';
+      const routeFeatures = features.filter(f => {
+        // Buscar features que contengan propiedades típicas de rutas FEDME
+        const props = f.properties || {};
+        return props.nombre || props.name || props.id;
+      });
+      
+      map.getCanvas().style.cursor = (routeFeatures && routeFeatures.length) ? 'pointer' : '';
+      
+      // Tooltip para mostrar código de ruta
+      const tooltip = document.getElementById('route-tooltip');
+      if (routeFeatures && routeFeatures.length > 0) {
+        const feat = routeFeatures[0];
+        const props = feat.properties || {};
+        let nombre = props.nombre || props.name || '';
+        // Extraer solo la parte del código (ej: "GR 10" de "GR 10. Etapa 08. Abejuela-Arcos de las Salinas")
+        let codigo = nombre.split('.')[0].trim();
+        if (codigo) {
+          tooltip.innerHTML = codigo;
+          tooltip.style.display = 'block';
+          tooltip.style.left = (e.originalEvent.pageX + 10) + 'px';
+          tooltip.style.top = (e.originalEvent.pageY - 25) + 'px';
+        }
+      } else {
+        tooltip.style.display = 'none';
+      }
     });
 
   </script>
