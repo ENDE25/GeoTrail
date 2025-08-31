@@ -1,0 +1,192 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <title>Senderos FEDME — Mapa (IDEe / vt-fedme)</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <link href="https://unpkg.com/maplibre-gl@2.4.0/dist/maplibre-gl.css" rel="stylesheet" />
+  <style>
+    body,html,#map { height:100%; margin:0; padding:0; }
+    #map { position:relative; }
+    .info {
+      position:absolute; top:10px; left:10px; z-index: 2;
+      background: rgba(255,255,255,0.9); padding:8px; border-radius:6px;
+      font-family:Arial, Helvetica, sans-serif; font-size:14px;
+    }
+  </style>
+</head>
+<body>
+  <div id="map"></div>
+  <div class="info">
+    <strong>Senderos FEDME</strong><br>
+    Clic en una ruta para ver propiedades y enlaces.
+  </div>
+
+  <script src="https://unpkg.com/maplibre-gl@2.4.0/dist/maplibre-gl.js"></script>
+  <script>
+    // Usar el style original de IDEE para que las rutas se vean correctamente
+    const styleUrl = 'https://vt-fedme.idee.es/files/styles/style.json';
+
+    const map = new maplibregl.Map({
+      container: 'map',
+      style: styleUrl,
+      center: [-3.7, 40.4],
+      zoom: 6
+    });
+
+    map.addControl(new maplibregl.NavigationControl({showCompass:false}), 'top-right');
+
+    // Cuando el mapa cargue, añade la capa raster de satélite debajo de las rutas
+    map.on('load', () => {
+      // Añade la fuente raster de ESRI
+      map.addSource('esri-satellite', {
+        type: 'raster',
+        tiles: [
+          'https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'
+        ],
+        tileSize: 256,
+        attribution: '© ESRI, Earthstar Geographics'
+      });
+      // Inserta la capa raster justo debajo de la primera capa de rutas
+      const layers = map.getStyle().layers;
+      let firstLineLayer = layers.find(l => l.type === 'line');
+      let beforeId = firstLineLayer ? firstLineLayer.id : undefined;
+      map.addLayer({
+        id: 'satellite',
+        type: 'raster',
+        source: 'esri-satellite',
+        minzoom: 0,
+        maxzoom: 18
+      }, beforeId);
+      map.addSource('fedme', {
+        type: 'vector',
+        url: 'https://vt-fedme.idee.es/files/services/senderos.json'
+      });
+      map.addLayer({
+        id: 'fedme-rutas',
+        type: 'line',
+        source: 'fedme',
+        'source-layer': 'senderos-fedme',
+        paint: {
+          'line-color': '#e74c3c',
+          'line-width': 3
+        }
+      });
+      map.getCanvas().style.cursor = 'default';
+    });
+
+    // Helper: construye HTML con propiedades y (si existe) enlaces a gpx/kml
+    function featurePopupHtml(props) {
+      let html = `<div style="font-family:Arial,Helvetica,sans-serif;font-size:13px">`;
+      // Muestra un par de propiedades relevantes (no conocemos nombres exactos).
+      for (const k of ['nombre','name','id','tipo','clasificacion','longitud']) {
+        if (props[k]) {
+          html += `<b>${k}:</b> ${props[k]}<br>`;
+        }
+      }
+      html += `<hr style="margin:6px 0">`;
+
+      // Busca propiedades típicas que podrían contener enlaces (si vienen en las tiles)
+      const possibleUrlKeys = ['gpx','gpx_url','kml','kml_url','url','download'];
+      let found = false;
+      for (const key of possibleUrlKeys) {
+        if (props[key]) {
+          html += `<a href="${props[key]}" target="_blank" rel="noopener">Descargar (${key})</a><br>`;
+          found = true;
+        }
+      }
+
+      if (!found) {
+        // Si no hay enlace directo: redirige al Centro de Descargas del CNIG (lista KML/GPX)
+        html += `Enlace de descarga no disponible en la tesela.<br>
+                 <a href="https://centrodedescargas.cnig.es/CentroDescargas/senderos-fedme" target="_blank" rel="noopener">
+                   Buscar KML/GPX en CentroDescargas (CNIG)
+                 </a>`;
+      }
+      html += `</div>`;
+      return html;
+    }
+
+    // Popup global
+    const popup = new maplibregl.Popup({closeButton:true,closeOnClick:true});
+
+    // Popup global fijo en la esquina inferior derecha
+    const popupDiv = document.createElement('div');
+    popupDiv.id = 'route-popup';
+    popupDiv.style.position = 'absolute';
+    popupDiv.style.right = '24px';
+    popupDiv.style.bottom = '24px';
+    popupDiv.style.zIndex = '10';
+    popupDiv.style.background = 'rgba(255,255,255,0.97)';
+    popupDiv.style.borderRadius = '10px';
+    popupDiv.style.boxShadow = '0 2px 12px rgba(0,0,0,0.15)';
+    popupDiv.style.padding = '18px 22px 18px 22px';
+    popupDiv.style.minWidth = '260px';
+    popupDiv.style.maxWidth = '340px';
+    popupDiv.style.fontFamily = 'Arial,Helvetica,sans-serif';
+    popupDiv.style.fontSize = '14px';
+    popupDiv.style.display = 'none';
+    document.body.appendChild(popupDiv);
+
+    // Escucha clicks en el mapa y muestra propiedades de la primera feature visible
+    map.on('click', (e) => {
+      const features = map.queryRenderedFeatures(e.point, { layers: ['fedme-rutas'] });
+      if (!features || features.length === 0) return;
+      const feat = features[0];
+      const props = feat.properties || {};
+      let html = `<div style='font-size:15px'><b>Datos de la ruta</b></div><hr style='margin:6px 0'>`;
+      for (const k of ['nombre','name','id','tipo','clasificacion','longitud']) {
+        if (props[k]) {
+          html += `<b>${k}:</b> ${props[k]}<br>`;
+        }
+      }
+      html += `<hr style='margin:6px 0'>`;
+      // Enlaces de descarga
+      const possibleUrlKeys = ['gpx','gpx_url','kml','kml_url','url','download'];
+      let found = false;
+      for (const key of possibleUrlKeys) {
+        if (props[key]) {
+          html += `<a href='${props[key]}' target='_blank' rel='noopener'>Descargar (${key})</a><br>`;
+          found = true;
+        }
+      }
+      if (!found) {
+        html += `Enlace de descarga no disponible.<br>`;
+      }
+      // Perfil de altitud si existe (asumimos propiedad 'perfil' con URL a imagen)
+      if (props.perfil) {
+        html += `<hr style='margin:6px 0'><b>Perfil de altitud:</b><br><img src='${props.perfil}' alt='Perfil altitud' style='width:100%;max-height:120px;margin-top:4px;border-radius:6px'>`;
+      }
+      popupDiv.innerHTML = html;
+      popupDiv.style.display = 'block';
+    });
+
+    // Ocultar popup al hacer click fuera del mapa
+    map.on('click', (e) => {
+      const features = map.queryRenderedFeatures(e.point, { layers: ['fedme-rutas'] });
+      if (!features || features.length === 0) {
+        popupDiv.style.display = 'none';
+      }
+    });
+
+    // Escucha clicks en el mapa y muestra propiedades de la primera feature visible
+    map.on('click', (e) => {
+      const features = map.queryRenderedFeatures(e.point);
+      if (!features || features.length === 0) return;
+      // tomamos la primera feature relevante (puedes mejorar la lógica filtrando por layer id)
+      const feat = features[0];
+      const props = feat.properties || {};
+      const coord = e.lngLat;
+
+      popup.setLngLat(coord).setHTML(featurePopupHtml(props)).addTo(map);
+    });
+
+    // Cambia cursor cuando hay features al pasar por encima
+    map.on('mousemove', (e) => {
+      const features = map.queryRenderedFeatures(e.point);
+      map.getCanvas().style.cursor = (features && features.length) ? 'pointer' : '';
+    });
+
+  </script>
+</body>
+</html>
