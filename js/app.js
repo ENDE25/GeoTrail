@@ -248,6 +248,23 @@ map.on('click', async (e) => {
     selectedPts.setData({ type:'FeatureCollection', features });
   }
 
+  // Botón Street View al inicio de la ruta (si hay coordenadas)
+  let streetViewBtnHtml = '';
+  if (startCoord && Array.isArray(startCoord) && startCoord.length >= 2) {
+    const lng = startCoord[0];
+    const lat = startCoord[1];
+    const svUrl = `https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=${lat},${lng}&heading=0&pitch=0&fov=80`;
+    streetViewBtnHtml = `
+      <a href="${svUrl}" target="_blank" rel="noopener" class="btn btn-outline-secondary btn-sm">
+  <i class="fas fa-street-view me-1"></i>Inicio 3D
+      </a>`;
+  } else {
+    streetViewBtnHtml = `
+      <button class="btn btn-outline-secondary btn-sm" disabled title="Inicio no disponible">
+  <i class="fas fa-street-view me-1"></i>Inicio 3D
+      </button>`;
+  }
+
   // Centrar y ampliar un poco el mapa sobre la ruta seleccionada
   const gc = getGeometryBoundsAndCenter(geom);
   if (gc && gc.center) {
@@ -304,14 +321,21 @@ map.on('click', async (e) => {
 
   html += `</div>`;
 
-  // Descargas
+  // Descargas y acciones
   const possibleUrlKeys = ['gpx','kml','url','download'];
-  let found = false; let downloadButtons = '';
+  let found = false;
+  let gpxBtn = '', kmlBtn = '', extraDlButtons = '';
   for (const key of possibleUrlKeys) {
-    if (props[key]) { downloadButtons += `
-      <a href="${props[key]}" target="_blank" rel="noopener" class="btn btn-outline-success btn-sm me-2 mb-2">
+    if (!props[key]) continue;
+    const href = props[key];
+    const btn = `
+      <a href="${href}" target="_blank" rel="noopener" class="btn btn-outline-success btn-sm">
         <i class="fas fa-download me-1"></i>${key.toUpperCase()}
-      </a>`; found = true; }
+      </a>`;
+    if (key === 'gpx') gpxBtn = btn;
+    else if (key === 'kml') kmlBtn = btn;
+    else extraDlButtons += btn;
+    found = true;
   }
   if (found) {
     html += `
@@ -319,17 +343,22 @@ map.on('click', async (e) => {
         <hr class="my-2">
         <div>
           <small class="text-muted d-block mb-2">Descargar:</small>
-          <div class="d-flex justify-content-between">
-            <div class="d-flex flex-wrap">${downloadButtons}</div>`;
-    if (props.url_info) {
-      html += `
-            <div class="d-flex align-items-start">
+          <div class="d-flex align-items-center text-nowrap w-100">
+            <div class="d-flex flex-nowrap align-items-center gap-1">
+              ${gpxBtn}
+              ${kmlBtn}
+              ${extraDlButtons}
+            </div>
+            <div class="ms-auto d-flex flex-nowrap align-items-center gap-1">
+              ${streetViewBtnHtml}
+              ${props.url_info ? `
               <a href="${props.url_info}" target="_blank" rel="noopener" class="btn btn-outline-info btn-sm">
-                <i class="fas fa-info-circle me-1"></i>INFO
-              </a>
-            </div>`;
-    }
-    html += `</div></div></div>`;
+                <i class=\"fas fa-info-circle me-1\"></i>INFO
+              </a>` : ''}
+            </div>
+          </div>
+        </div>
+      </div>`;
   } else {
     html += `
       <div class="mt-auto">
@@ -339,6 +368,7 @@ map.on('click', async (e) => {
           <a href="https://centrodedescargas.cnig.es/CentroDescargas/senderos-fedme" target="_blank" rel="noopener" class="btn btn-outline-primary btn-sm mt-2">
             <i class="fas fa-external-link-alt me-1"></i>Centro de Descargas CNIG
           </a>
+          <div class="mt-2">${streetViewBtnHtml}</div>
         </div>
       </div>`;
   }
