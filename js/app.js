@@ -141,8 +141,7 @@ popupDiv.style.position = 'absolute';
 popupDiv.style.left = '10px';
 popupDiv.style.top = '78px';
 popupDiv.style.zIndex = '1000';
-popupDiv.style.width = '320px';
-popupDiv.style.height = '354px';
+// Ancho fijo desde CSS
 popupDiv.style.display = 'none';
 
 const detailsPopupDiv = (() => {
@@ -155,11 +154,17 @@ const detailsPopupDiv = (() => {
 })();
 detailsPopupDiv.style.position = 'absolute';
 detailsPopupDiv.style.left = '10px';
-detailsPopupDiv.style.top = '444px';
 detailsPopupDiv.style.zIndex = '1000';
-detailsPopupDiv.style.width = '320px';
-detailsPopupDiv.style.maxHeight = 'calc(100vh - 454px)';
+// Ancho fijo desde CSS
 detailsPopupDiv.style.display = 'none';
+detailsPopupDiv.style.overflowY = 'auto';
+
+function repositionDetailsPanel() {
+  const top = popupDiv.offsetTop + popupDiv.offsetHeight + 10; // separación de 10px
+  detailsPopupDiv.style.top = top + 'px';
+  detailsPopupDiv.style.maxHeight = `calc(100vh - ${top + 10}px)`;
+}
+window.addEventListener('resize', repositionDetailsPanel);
 
 // Búsqueda de imagen
 async function searchRouteImage(routeName) {
@@ -277,11 +282,11 @@ map.on('click', async (e) => {
 
   // Panel principal
   let html = `
-    <div class="card border-0 h-100 d-flex flex-column">
+    <div class="card border-0 d-flex flex-column">
       <div class="card-header bg-primary text-white py-2">
         <h6 class="mb-0"><i class="fas fa-route me-2"></i>Información de la Ruta</h6>
       </div>
-      <div class="card-body p-3 d-flex flex-column" style="height: calc(100% - 50px);">
+      <div class="card-body p-3 d-flex flex-column">
         <div class="flex-grow-1">`;
 
   // Título (código + icono) y nombre sin código
@@ -342,20 +347,15 @@ map.on('click', async (e) => {
       <div class="mt-auto">
         <hr class="my-2">
         <div>
-          <small class="text-muted d-block mb-2">Descargar:</small>
-          <div class="d-flex align-items-center text-nowrap w-100">
-            <div class="d-flex flex-nowrap align-items-center gap-1">
-              ${gpxBtn}
-              ${kmlBtn}
-              ${extraDlButtons}
-            </div>
-            <div class="ms-auto d-flex flex-nowrap align-items-center gap-1">
-              ${streetViewBtnHtml}
-              ${props.url_info ? `
-              <a href="${props.url_info}" target="_blank" rel="noopener" class="btn btn-outline-info btn-sm">
-                <i class=\"fas fa-info-circle me-1\"></i>INFO
-              </a>` : ''}
-            </div>
+          <div class="action-buttons d-flex flex-wrap align-items-center gap-1 w-100">
+            ${gpxBtn}
+            ${kmlBtn}
+            ${extraDlButtons}
+            ${streetViewBtnHtml}
+            ${props.url_info ? `
+            <a href="${props.url_info}" target="_blank" rel="noopener" class="btn btn-outline-info btn-sm">
+              <i class=\"fas fa-info-circle me-1\"></i>INFO
+            </a>` : ''}
           </div>
         </div>
       </div>`;
@@ -377,6 +377,7 @@ map.on('click', async (e) => {
   popupDiv.innerHTML = html;
   popupDiv.style.display = 'block';
   popupDiv.offsetHeight; popupDiv.classList.add('show');
+  repositionDetailsPanel();
 
   if (props.url_info) {
     detailsPopupDiv.innerHTML = `
@@ -391,7 +392,7 @@ map.on('click', async (e) => {
           </div>
         </div>
       </div>`;
-    detailsPopupDiv.style.display = 'block'; detailsPopupDiv.offsetHeight; detailsPopupDiv.classList.add('show');
+  detailsPopupDiv.style.display = 'block'; detailsPopupDiv.offsetHeight; detailsPopupDiv.classList.add('show'); repositionDetailsPanel();
 
     const [detailsHtml, imageUrl] = await Promise.all([
       loadRouteDetails(props.url_info),
@@ -407,15 +408,16 @@ map.on('click', async (e) => {
           </div>`;
       }
       if (detailsHtml) { if (imageUrl) contentHtml += '<hr class="my-2">'; contentHtml += detailsHtml; }
-      detailsPopupDiv.innerHTML = `
+  detailsPopupDiv.innerHTML = `
         <div class="card border-0">
           <div class="card-header bg-info text-white py-2">
             <h6 class="mb-0"><i class="fas fa-info-circle me-2"></i>Detalles Adicionales</h6>
           </div>
-          <div class="card-body p-3" style="max-height: calc(100vh - 500px); overflow-y: auto; font-size: 12px;">${contentHtml}</div>
+          <div class="card-body p-3" style="font-size: 12px;">${contentHtml}</div>
         </div>`;
+  repositionDetailsPanel();
     } else {
-      detailsPopupDiv.innerHTML = `
+  detailsPopupDiv.innerHTML = `
         <div class="card border-0">
           <div class="card-header bg-warning text-white py-2">
             <h6 class="mb-0"><i class="fas fa-exclamation-triangle me-2"></i>Sin Detalles</h6>
@@ -427,6 +429,7 @@ map.on('click', async (e) => {
             </div>
           </div>
         </div>`;
+  repositionDetailsPanel();
     }
   }
 });

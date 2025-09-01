@@ -1,12 +1,16 @@
+:root {
+  /* Ancho fijo para todos los paneles */
+  --panel-width: 320px;
+}
 body,html,#map { height:100%; margin:0; padding:0; }
 #map { position:relative; }
 .info {
   position:absolute; top:10px; left:10px; z-index: 2;
   background: rgba(255,255,255,0.9); padding:8px; border-radius:6px;
   font-family:Arial, Helvetica, sans-serif; font-size:14px;
-  min-width: 320px;
-  max-width: 400px;
-  width: auto;
+  width: var(--panel-width);
+  min-width: var(--panel-width);
+  max-width: var(--panel-width);
   max-height: calc(100vh - 40px);
   overflow-y: auto;
 }
@@ -18,11 +22,28 @@ body,html,#map { height:100%; margin:0; padding:0; }
   border-radius:4px; font-size:12px; font-family:Arial,sans-serif;
   display:none; white-space:nowrap;
 }
-#route-popup .card { background: rgba(255,255,255,0.9) !important; width:auto; min-width:320px; max-width:400px; }
+#route-popup { width: var(--panel-width); }
+#route-details-popup { width: var(--panel-width); }
+#route-details-popup .card, #route-popup .card { background: rgba(255,255,255,0.9) !important; }
+#route-popup .card { background: rgba(255,255,255,0.9) !important; width:100%; box-sizing: border-box; }
+#route-popup .action-buttons {
+  display: flex;
+  flex-wrap: wrap; /* envuelve si no cabe */
+  justify-content: flex-start; /* izquierda a derecha */
+  align-items: stretch;
+  gap: 0.25rem; /* espacio uniforme entre botones */
+  padding: 0 8px; /* márgenes laterales simétricos */
+  width: 100%;
+  box-sizing: border-box;
+}
+/* Mantener botones en su anchura natural y respetar el gap */
+#route-popup .action-buttons .btn { white-space: nowrap; flex: 1 1 0; }
+/* Si la línea no cabe por ancho reducido, permitir wrap manteniendo márgenes simétricos */
+/* No se necesita media query: con wrap siempre se evita desborde */
 #route-details-popup { opacity:0; transform:translateY(-10px); transition: opacity .3s ease, transform .3s ease; }
 #route-details-popup.show { opacity:1; transform:translateY(0); }
 #route-details-popup.hide { opacity:0; transform:translateY(-10px); }
-#route-details-popup .card { background: rgba(255,255,255,0.9) !important; width:auto; min-width:320px; max-width:400px; }
+#route-details-popup .card { background: rgba(255,255,255,0.9) !important; width:100%; box-sizing: border-box; }
 #route-popup { opacity:0; transform:translateY(-10px); transition: opacity .3s ease, transform .3s ease; }
 #route-popup.show { opacity:1; transform:translateY(0); }
 #route-popup.hide { opacity:0; transform:translateY(-10px); }
