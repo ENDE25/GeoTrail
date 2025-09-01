@@ -1,6 +1,6 @@
 
 
-# SpainTracks GR/PR
+# GeoTrail GR/PR/SL
 Mapa interactivo de senderos homologados en España (GR, PR, SL) con visualización rápida, detalles básicos de cada ruta, descargas y utilidades prácticas como geolocalización y apertura de Street View en el inicio de la ruta.
 
 ![captura de pantalla](/img/image.png)
@@ -24,6 +24,12 @@ Mapa interactivo de senderos homologados en España (GR, PR, SL) con visualizaci
 - Notas y requisitos
 	- Geolocalización: requiere HTTPS o ejecutar en localhost; si no, el navegador puede bloquear la ubicación.
 	- Street View depende de la cobertura de Google en la zona y puede no estar disponible en todos los comienzos de ruta.
+
+## Tipos de ruta
+
+- GR — Gran Recorrido: recorridos largos (habitualmente > 50 km). Suelen estar divididos por etapas oficiales publicadas por las federaciones. En la app verás el trazado completo y puedes abrir “INFO” para detalles por etapas.
+- PR — Pequeño Recorrido: rutas medias (aprox. 10–50 km).
+- SL — Sendero Local: rutas cortas (habitualmente < 10 km).
 
 ---
 
@@ -101,6 +107,11 @@ Mapa interactivo de senderos homologados en España (GR, PR, SL) con visualizaci
 - Paneles `.card` con fondo semitransparente y transiciones (`#route-popup`, `#route-details-popup`).
 - Tooltip `#route-tooltip` para el código de ruta al pasar el ratón.
 - Icono de tipo de ruta junto al título: `.route-type-icon` (tamaño ligeramente aumentado a `1.25em`).
+
+### Tipos de ruta y detección en la app
+
+- Detección: se infiere a partir del nombre de la ruta (prefijos como “GR”, “PR”, “SL”) y/o metadatos (`tipo`/`clasificacion`). Según el tipo se muestra el icono `img/gr.png`, `img/pr.png` o `img/sl.png`.
+- GR por etapas: la fuente oficial suele organizar las GR en etapas. La app centra y resalta el trazado completo al seleccionarlo y ofrece el botón “INFO” para acceder a la información detallada por etapas cuando esté disponible.
 
 ### Extensiones y puntos de mejora
 
