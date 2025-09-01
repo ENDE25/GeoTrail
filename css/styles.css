@@ -26,4 +26,4 @@ body,html,#map { height:100%; margin:0; padding:0; }
 #route-popup { opacity:0; transform:translateY(-10px); transition: opacity .3s ease, transform .3s ease; }
 #route-popup.show { opacity:1; transform:translateY(0); }
 #route-popup.hide { opacity:0; transform:translateY(-10px); }
-.route-type-icon { height:1em; width:auto; vertical-align:-0.125em; }
+.route-type-icon { height:1.25em; width:auto; vertical-align:-0.125em; }
